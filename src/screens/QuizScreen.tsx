@@ -19,7 +19,7 @@ const QuizScreen = ({ navigation, route }: ScreenProps<"Quiz">) => {
   const [score, setScore] = useState<number>(0);
 
   const handleAnswer = (selectedAnswer: string) => {
-    const correctAnswer = questions[currentQuestion].correct_answer;
+    const { correct_answer: correctAnswer } = questions[currentQuestion];
     const isCorrect = selectedAnswer === correctAnswer;
 
     if (isCorrect) {
@@ -56,10 +56,11 @@ const QuizScreen = ({ navigation, route }: ScreenProps<"Quiz">) => {
         {questions[currentQuestion].question}
       </Text>
 
+      {/* TODO: use a shuffle utility function to shuffle questions beforehand  */}
       {questions[currentQuestion].incorrect_answers
         .concat(questions[currentQuestion].correct_answer)
         .sort()
-        .map((answer: string) => (
+        .map((answer) => (
           <Button
             key={answer}
             title={answer}

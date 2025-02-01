@@ -1,107 +1,62 @@
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   Button,
   StyleSheet,
   ActivityIndicator,
-  Modal,
   TouchableOpacity,
   FlatList,
-  ListRenderItem,
 } from "react-native";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../App";
-
-interface Category {
-  label: string;
-  value: number;
-}
-
-interface Difficulty {
-  label: string;
-  value: string;
-}
+import { Difficulty, Item, ScreenProps } from "~/lib/types";
+import { useCategories } from "~/lib/hooks/use-categories";
+import { difficulties } from "~/lib/consts";
+import { BottomSheetModal, BottomSheetView } from "@gorhom/bottom-sheet";
 
 type PickerType = "category" | "difficulty";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Setup">;
+export function SetupScreen({ navigation }: ScreenProps<"Setup">) {
+  const { categories, isLoading } = useCategories();
+  const bottomSheetModalRef = useRef<BottomSheetModal>(null);
 
-const SetupScreen: React.FC<Props> = ({ navigation }) => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [difficulty, setDifficulty] = useState<string>("easy");
-  const [loading, setLoading] = useState<boolean>(true);
-  const [modalVisible, setModalVisible] = useState<boolean>(false);
+  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+  const [category, setCategory] = useState<number | null>(null);
   const [currentPicker, setCurrentPicker] = useState<PickerType | null>(null);
 
-  const difficulties: Difficulty[] = [
-    { label: "Easy", value: "easy" },
-    { label: "Medium", value: "medium" },
-    { label: "Hard", value: "hard" },
-  ];
-
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (currentPicker) bottomSheetModalRef.current?.present();
+  }, [currentPicker]);
 
-  const fetchCategories = async (): Promise<void> => {
-    try {
-      const response = await fetch("https://opentdb.com/api_category.php");
-      const data = await response.json();
-      const formattedCategories: Category[] = data.trivia_categories.map(
-        (cat: { id: number; name: string }) => ({
-          label: cat.name,
-          value: cat.id,
-        })
-      );
-      setCategories(formattedCategories);
-      setSelectedCategory(formattedCategories[0]?.value || null);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
+  const startQuiz = useCallback(() => {
+    if (!category) {
+      console.warn("No category selected");
+      return;
     }
-  };
 
-  const startQuiz = async (): Promise<void> => {
-    if (!selectedCategory) return;
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `https://opentdb.com/api.php?amount=10&category=${selectedCategory}&difficulty=${difficulty}&type=multiple`
-      );
-      const data = await response.json();
-      setLoading(false);
-      navigation.navigate("Quiz", { questions: data.results, difficulty });
-    } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
-    }
-  };
+    navigation.navigate("Quiz", { category, difficulty });
+  }, [category, difficulty, navigation]);
 
-  const openPicker = (pickerType: PickerType): void => {
-    setCurrentPicker(pickerType);
-    setModalVisible(true);
-  };
+  const renderItem = useCallback(
+    ({ item }: { item: Item }) => (
+      <TouchableOpacity
+        style={styles.modalItem}
+        onPress={() => {
+          if (currentPicker === "category") {
+            setCategory(item.value as number);
+          } else {
+            setDifficulty(item.value as Difficulty);
+          }
 
-  const renderItem: ListRenderItem<Category | Difficulty> = ({ item }) => (
-    <TouchableOpacity
-      style={styles.modalItem}
-      onPress={() => {
-        if (currentPicker === "category") {
-          setSelectedCategory((item as Category).value);
-        } else {
-          setDifficulty((item as Difficulty).value);
-        }
-        setModalVisible(false);
-      }}
-    >
-      <Text style={styles.modalItemText}>{item.label}</Text>
-    </TouchableOpacity>
+          bottomSheetModalRef.current?.dismiss();
+        }}
+      >
+        <Text style={styles.modalItemText}>{item.label}</Text>
+      </TouchableOpacity>
+    ),
+    [currentPicker]
   );
 
-  if (loading) {
+  if (isLoading) {
     return (
       <ActivityIndicator
         style={styles.container}
@@ -117,18 +72,18 @@ const SetupScreen: React.FC<Props> = ({ navigation }) => {
 
       <TouchableOpacity
         style={styles.pickerButton}
-        onPress={() => openPicker("category")}
+        onPress={() => setCurrentPicker("category")}
       >
         <Text style={styles.label}>Category</Text>
         <Text style={styles.selectedValue}>
-          {categories.find((c) => c.value === selectedCategory)?.label ||
+          {categories.find((c) => c.value === category)?.label ||
             "Select Category"}
         </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={styles.pickerButton}
-        onPress={() => openPicker("difficulty")}
+        onPress={() => setCurrentPicker("difficulty")}
       >
         <Text style={styles.label}>Difficulty</Text>
         <Text style={styles.selectedValue}>
@@ -137,33 +92,36 @@ const SetupScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
       </TouchableOpacity>
 
-      <Button
-        title="Start Quiz"
-        onPress={startQuiz}
-        disabled={!selectedCategory}
-      />
+      <Button title="Start Quiz" onPress={startQuiz} disabled={!category} />
 
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <FlatList
-              data={currentPicker === "category" ? categories : difficulties}
-              renderItem={renderItem}
-              keyExtractor={(item) => item.value.toString()}
-            />
-            <Button title="Close" onPress={() => setModalVisible(false)} />
-          </View>
-        </View>
-      </Modal>
+      <BottomSheetModal
+        ref={bottomSheetModalRef}
+        snapPoints={["50%"]}
+        onDismiss={() => setCurrentPicker(null)}
+        backgroundStyle={styles.modalBackground}
+        handleIndicatorStyle={styles.indicator}
+      >
+        <BottomSheetView style={styles.modalContent}>
+          <Text style={styles.modalTitle}>
+            Select {currentPicker === "category" ? "Category" : "Difficulty"}
+          </Text>
+          <FlatList
+            data={currentPicker === "category" ? categories : difficulties}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.value.toString()}
+            contentContainerStyle={styles.listContainer}
+          />
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#f8f9fa",
     padding: 20,
-    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
@@ -173,10 +131,11 @@ const styles = StyleSheet.create({
   },
   pickerButton: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
+    borderColor: "#e9ecef",
+    borderRadius: 16,
     padding: 15,
     marginBottom: 20,
+    backgroundColor: "#fff",
   },
   label: {
     fontSize: 14,
@@ -187,25 +146,55 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#000",
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.5)",
+  modalBackground: {
+    backgroundColor: "#f8f9fa",
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: -4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  indicator: {
+    backgroundColor: "#dee2e6",
+    width: 40,
   },
   modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingVertical: 20,
-    maxHeight: "70%",
+    flex: 1,
+    paddingVertical: 8,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    marginVertical: 16,
+    color: "#000",
+  },
+  listContainer: {
+    paddingHorizontal: 16,
   },
   modalItem: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: "#fff",
+    borderWidth: 0,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   modalItemText: {
     fontSize: 16,
+    color: "#000",
+    fontWeight: "500",
   },
 });
 

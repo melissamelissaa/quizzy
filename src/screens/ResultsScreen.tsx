@@ -1,12 +1,11 @@
-import React from "react";
 import { View, Text, Button, StyleSheet } from "react-native";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../../App";
+import { ScreenProps } from "~/lib/types";
+import { getDifficultyMultiplier } from "~/lib/utils/difficulty-multiplier";
 
-type Props = NativeStackScreenProps<RootStackParamList, "Results">;
+export function ResultsScreen({ navigation, route }: ScreenProps<"Results">) {
+  const { score, totalQuestions, difficulty } = route.params;
 
-const ResultsScreen = ({ navigation, route }: Props) => {
-  const { score, totalQuestions } = route.params;
+  const multiplier = getDifficultyMultiplier(difficulty);
 
   const restart = () => {
     navigation.navigate("Setup");
@@ -16,12 +15,12 @@ const ResultsScreen = ({ navigation, route }: Props) => {
     <View style={styles.container}>
       <Text style={styles.title}>Quiz Completed!</Text>
       <Text style={styles.score}>
-        You scored {score} out of {totalQuestions * 3} possible points
+        You scored {score} out of {totalQuestions * multiplier} possible points
       </Text>
       <Button title="Restart Quiz" onPress={restart} />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

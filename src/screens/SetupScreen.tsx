@@ -120,7 +120,7 @@ export function SetupScreen({ navigation }: ScreenProps<"Setup">) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#fff",
     padding: 20,
   },
   title: {
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
   modalBackground: {
-    backgroundColor: "#f8f9fa",
+    backgroundColor: "#fff",
     borderRadius: 24,
     shadowColor: "#000",
     shadowOffset: {

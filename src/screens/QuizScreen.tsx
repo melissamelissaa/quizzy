@@ -2,15 +2,16 @@ import { useState } from "react";
 import {
   View,
   Text,
-  Button,
   StyleSheet,
   ActivityIndicator,
+  TouchableOpacity,
 } from "react-native";
 import { ScreenProps } from "~/lib/types";
 import { useQuestions } from "~/lib/hooks/use-questions";
 import { getDifficultyMultiplier } from "~/lib/utils/difficulty-multiplier";
+import Markdown from "react-native-markdown-display";
 
-const QuizScreen = ({ navigation, route }: ScreenProps<"Quiz">) => {
+export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
   const { category, difficulty } = route.params;
 
   const { questions, isLoading } = useQuestions({ category, difficulty });
@@ -21,16 +22,16 @@ const QuizScreen = ({ navigation, route }: ScreenProps<"Quiz">) => {
   const handleAnswer = (selectedAnswer: string) => {
     const { correct_answer: correctAnswer } = questions[currentQuestion];
     const isCorrect = selectedAnswer === correctAnswer;
-
-    if (isCorrect) {
-      setScore((prev) => prev + getDifficultyMultiplier(difficulty));
-    }
-
     const isLastQuestion = currentQuestion === questions.length - 1;
+
+    const scoreChange = isCorrect ? getDifficultyMultiplier(difficulty) : 0;
+    const newScore = score + scoreChange;
+
+    setScore(newScore);
 
     if (isLastQuestion) {
       navigation.navigate("Results", {
-        score,
+        score: newScore,
         totalQuestions: questions.length,
         difficulty,
       });
@@ -53,23 +54,21 @@ const QuizScreen = ({ navigation, route }: ScreenProps<"Quiz">) => {
         Question {currentQuestion + 1}/{questions.length}
       </Text>
       <Text style={styles.questionText}>
-        {questions[currentQuestion].question}
+        <Markdown>{questions[currentQuestion].question}</Markdown>
       </Text>
 
       {/* TODO: use a shuffle utility function to shuffle questions beforehand  */}
       {questions[currentQuestion].incorrect_answers
         .concat(questions[currentQuestion].correct_answer)
-        .sort()
+        // .sort()
         .map((answer) => (
-          <Button
-            key={answer}
-            title={answer}
-            onPress={() => handleAnswer(answer)}
-          />
+          <TouchableOpacity key={answer} onPress={() => handleAnswer(answer)}>
+            <Markdown>{answer}</Markdown>
+          </TouchableOpacity>
         ))}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {

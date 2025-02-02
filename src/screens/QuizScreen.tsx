@@ -1,27 +1,24 @@
 import { useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-} from "react-native";
+import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { ScreenProps } from "~/lib/types";
 import { useQuestions } from "~/lib/hooks/use-questions";
 import { getDifficultyMultiplier } from "~/lib/utils/difficulty-multiplier";
 import Markdown from "react-native-markdown-display";
+import { Answer } from "~/components/Answer";
 
 export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
   const { category, difficulty } = route.params;
-
   const { questions, isLoading } = useQuestions({ category, difficulty });
-
   const [currentQuestion, setCurrentQuestion] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
 
-  const handleAnswer = (selectedAnswer: string) => {
+  const handleAnswer = (answer: string) => {
+    if (selectedAnswer) return;
+
+    setSelectedAnswer(answer);
     const { correct_answer: correctAnswer } = questions[currentQuestion];
-    const isCorrect = selectedAnswer === correctAnswer;
+    const isCorrect = answer === correctAnswer;
     const isLastQuestion = currentQuestion === questions.length - 1;
 
     const scoreChange = isCorrect ? getDifficultyMultiplier(difficulty) : 0;
@@ -29,42 +26,50 @@ export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
 
     setScore(newScore);
 
-    if (isLastQuestion) {
-      navigation.navigate("Results", {
-        score: newScore,
-        totalQuestions: questions.length,
-        difficulty,
-      });
-    } else {
-      setCurrentQuestion((prev) => prev + 1);
-    }
+    setTimeout(() => {
+      if (isLastQuestion) {
+        navigation.navigate("Results", {
+          score: newScore,
+          totalQuestions: questions.length,
+          difficulty,
+        });
+      } else {
+        setCurrentQuestion((prev) => prev + 1);
+        setSelectedAnswer(null);
+      }
+    }, 1000);
   };
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      <ActivityIndicator
+        style={styles.container}
+        size="large"
+        color="#0000ff"
+      />
     );
   }
 
   return (
     <View style={styles.container}>
       <Text style={styles.questionNumber}>
-        Question {currentQuestion + 1}/{questions.length}
+        QUESTION {currentQuestion + 1}/{questions.length}
       </Text>
-      <Text style={styles.questionText}>
-        <Markdown>{questions[currentQuestion].question}</Markdown>
-      </Text>
+      <Markdown style={{ body: styles.questionText }}>
+        {questions[currentQuestion].question}
+      </Markdown>
 
-      {/* TODO: use a shuffle utility function to shuffle questions beforehand  */}
       {questions[currentQuestion].incorrect_answers
         .concat(questions[currentQuestion].correct_answer)
-        // .sort()
+        .sort()
         .map((answer) => (
-          <TouchableOpacity key={answer} onPress={() => handleAnswer(answer)}>
-            <Markdown>{answer}</Markdown>
-          </TouchableOpacity>
+          <Answer
+            key={answer}
+            answer={answer}
+            selectedAnswer={selectedAnswer}
+            correctAnswer={questions[currentQuestion].correct_answer}
+            onPress={handleAnswer}
+          />
         ))}
     </View>
   );
@@ -76,14 +81,15 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   questionNumber: {
-    fontSize: 18,
+    fontSize: 13,
     marginBottom: 10,
-  },
-  questionText: {
-    fontSize: 20,
-    marginBottom: 20,
+    color: "#888",
     fontWeight: "bold",
   },
+  questionText: {
+    fontSize: 26,
+    marginBottom: 20,
+    fontWeight: "500",
+    color: "#222",
+  },
 });
-
-export default QuizScreen;

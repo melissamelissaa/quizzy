@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { ScreenProps } from "~/lib/types";
 import { useQuestions } from "~/lib/hooks/use-questions";
@@ -12,6 +12,14 @@ export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
   const [currentQuestion, setCurrentQuestion] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+
+  const randomizedAnswers = useMemo(() => {
+    if (!questions || !questions[currentQuestion]) return [];
+
+    return questions[currentQuestion].incorrect_answers
+      .concat(questions[currentQuestion].correct_answer)
+      .sort(() => Math.random() - 0.5);
+  }, [currentQuestion, questions]);
 
   const handleAnswer = (answer: string) => {
     if (selectedAnswer) return;
@@ -59,18 +67,15 @@ export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
         {questions[currentQuestion].question}
       </Markdown>
 
-      {questions[currentQuestion].incorrect_answers
-        .concat(questions[currentQuestion].correct_answer)
-        .sort()
-        .map((answer) => (
-          <Answer
-            key={answer}
-            answer={answer}
-            selectedAnswer={selectedAnswer}
-            correctAnswer={questions[currentQuestion].correct_answer}
-            onPress={handleAnswer}
-          />
-        ))}
+      {randomizedAnswers.map((answer) => (
+        <Answer
+          key={answer}
+          answer={answer}
+          selectedAnswer={selectedAnswer}
+          correctAnswer={questions[currentQuestion].correct_answer}
+          onPress={handleAnswer}
+        />
+      ))}
     </View>
   );
 }

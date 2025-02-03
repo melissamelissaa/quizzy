@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
+import { useState, useMemo, useEffect } from "react";
+import { View, Text, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { ScreenProps } from "~/lib/types";
 import { useQuestions } from "~/lib/hooks/use-questions";
 import { getDifficultyMultiplier } from "~/lib/utils/difficulty-multiplier";
@@ -12,6 +12,19 @@ export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
   const [currentQuestion, setCurrentQuestion] = useState<number>(0);
   const [score, setScore] = useState<number>(0);
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+
+  // console.log(isLoading);
+  // console.log(questions.length);
+
+  useEffect(() => {
+    if (!isLoading && (!questions || questions.length === 0)) {
+      Alert.alert(
+        "No Questions Available",
+        "Sorry, we couldn't load any questions. Please try again later.",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    }
+  }, [isLoading, questions, navigation]);
 
   const randomizedAnswers = useMemo(() => {
     if (!questions || !questions[currentQuestion]) return [];
@@ -56,6 +69,10 @@ export function QuizScreen({ navigation, route }: ScreenProps<"Quiz">) {
         color="#0000ff"
       />
     );
+  }
+
+  if (!questions || questions.length === 0) {
+    return null;
   }
 
   return (

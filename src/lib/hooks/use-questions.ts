@@ -14,9 +14,9 @@ export function useQuestions({
 
   useEffect(() => {
     fetchQuestions(category, difficulty).then((questions) => {
+      setIsLoading(false);
       if (questions.length > 0) {
         setQuestions(questions);
-        setIsLoading(false);
       }
     });
   }, [category, difficulty]);
